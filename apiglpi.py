@@ -11,6 +11,13 @@ USERTOKEN = 'rLnv6bWO4s18LZZfofawFP7yEyQfekyomPKsYmC9'                          
 BOTTOKEN = '5341319826:AAHpKduSpGQeO_T2fLpbGmb7hg5lax97Fns'
 bot = telebot.TeleBot(BOTTOKEN) # creating a instance
 
+def newchamado():
+    try:
+        with glpi_api.connect(URL, APPTOKEN, USERTOKEN) as glpi:
+            # #CRIAR CHAMADO
+            glpi.add("ticket", {"name": 'teste', "content":'Fui aberto via API', "itilcategories_id": "1"})
+    except glpi_api.GLPIError as err:
+        print(str(err))
 
 try:
     with glpi_api.connect(URL, APPTOKEN, USERTOKEN) as glpi:
@@ -55,8 +62,6 @@ def getUser(usuario):
 
     return usuarioExiste
 
-def verificar(message):
-        return True
 
 def verificaUser(user, message):
 
@@ -71,8 +76,13 @@ def verificaUser(user, message):
 
 def main():
     
+    @bot.message_handler(commands=['chamado'])
+    def novochamado(message):
+        newchamado()
 
-    @bot.message_handler(func=verificar)
+
+
+    @bot.message_handler(func=lambda message: True)
     def greet(message):
         user = message.from_user.username
         uservalido = lambda x : True if (x) else False
