@@ -4,36 +4,32 @@ import os
 import glpi_api
 import pymysql
 import telegram
+import datetime
 
 URL = 'http://172.16.112.164/glpi/apirest.php/'
-APPTOKEN = 'ygGEvniPLTKkwVwl4hWm9eKnnbLpXDNYNpb9EAqV'                                           #TOKEN GERADO PARA TODO O SISTEMA
-USERTOKEN = 'rLnv6bWO4s18LZZfofawFP7yEyQfekyomPKsYmC9'                                          #API TOKEN DO USUÁRIO
+APPTOKEN = 'XvRM61PGyo70FTwMEmJxDilK8lXmacjtoyciiuNj'                                           #TOKEN GERADO PARA TODO O SISTEMA
+USERTOKEN = 'CZoqXFVys4u0IKRssKIbDsQRwwMFIxwTY6ZqvE2L'                                          #API TOKEN DO USUÁRIO
 BOTTOKEN = '5341319826:AAHpKduSpGQeO_T2fLpbGmb7hg5lax97Fns'
 bot = telebot.TeleBot(BOTTOKEN) # creating a instance
-
-def newchamado():
-    try:
-        with glpi_api.connect(URL, APPTOKEN, USERTOKEN) as glpi:
-            # #CRIAR CHAMADO
-            glpi.add("ticket", {"name": 'teste', "content":'Fui aberto via API', "itilcategories_id": "1"})
-    except glpi_api.GLPIError as err:
-        print(str(err))
-
-try:
-    with glpi_api.connect(URL, APPTOKEN, USERTOKEN) as glpi:
-        # #CRIAR CHAMADO
-        # glpi.add("ticket", {"name": 'teste', "content":'Fui aberto via API', "itilcategories_id": "1"})
-        # #DELETAR CHAMADO
-        # glpi.delete("ticket", {"id":'20'})
-        # #INSERIR INTERAÇÃO
-        # glpi.add("ticketfollowup",{"items_id":'25',"itemstype":"ticket","content":'nova interação'})
-        # ALTERAR STATUS TICKET
-        # glpi.update('ticket',{"id":'22','status':'5'})
-        pass
-except glpi_api.GLPIError as err:
-    print(str(err))
+sessao = {"chat_id": {}}
 
 
+
+# try:
+#     with glpi_api.connect(URL, APPTOKEN, USERTOKEN) as glpi:
+#         # #CRIAR CHAMADO
+#         # glpi.add("ticket", {"name": 'teste', "content":'Fui aberto via API', "itilcategories_id": "1"})
+#         # #DELETAR CHAMADO
+#         # glpi.delete("ticket", {"id":'20'})
+#         # #INSERIR INTERAÇÃO
+#         # glpi.add("ticketfollowup",{"items_id":'25',"itemstype":"ticket","content":'nova interação'})
+#         # ALTERAR STATUS TICKET
+#         # glpi.update('ticket',{"id":'22','status':'5'})
+#         pass
+# except glpi_api.GLPIError as err:
+#     print(str(err))
+
+#CONECTA BANCO
 def conexao():
     connection = pymysql.connect(host='172.16.112.164',
                              user='root',
@@ -41,6 +37,7 @@ def conexao():
                              database='verdanatech_glpi_lab')    
     return connection
 
+#RETORNA SE USUÀRIO TELEGRAM ESTA REGISTRADO NO BANCO
 def getUser(usuario):
     usuarioExiste = False 
     con = conexao()
@@ -62,13 +59,84 @@ def getUser(usuario):
 
     return usuarioExiste
 
+#RETORNA O ID DO USUÁRIO NO GLPI BASEADO NO USUÁRIO DO TELEGRAM
+def getglpiid(usuario):
+    
+    con = conexao()
+    cursor = con.cursor()
 
-def verificaUser(user, message):
+    sql = f'''SELECT id,username FROM glpi_plugin_telegrambot_users WHERE username = '{usuario}' '''
+    print(sql)
+    cursor.execute(sql)
+    id = cursor.fetchone()
 
-    if getUser(user):
-        return True
+    
+    cursor.close()
+    con.close()
+
+    return id[0]
+
+#CAPTURA TITULO
+def comecaChamado(message):
+    titulo = bot.send_message(message.chat.id, 'Digite o titulo do chamado!')
+    bot.register_next_step_handler(titulo, descricaoChamado)
+
+#CAPTURA DESCRIÇÃO
+def descricaoChamado(message):
+    sessao['chat_id'][message.chat.id]['titulo'] = message.text
+    descricao = bot.send_message(message.chat.id, 'Digite o descricao do chamado!')
+    bot.register_next_step_handler(descricao, montaChamado)
+    
+#CRIA CHAMADO  
+def montaChamado(message):
+    sessao['chat_id'][message.chat.id]['conteudo'] = message.text
+    titulo = sessao['chat_id'][message.chat.id]['titulo']
+    conteudo = sessao['chat_id'][message.chat.id]['conteudo']
+    user = message.from_user.username
+    try:
+        with glpi_api.connect(URL, APPTOKEN, USERTOKEN) as glpi:
+            id = getglpiid(user)
+            glpi.add("ticket", 
+                    {"name": titulo, 
+                    "content": conteudo,   
+                    "itilcategories_id": "1", 
+                    "_users_id_requester": id})
+    except glpi_api.GLPIError as err:
+        print(str(err))
+
+def validausernotify(idtelegram, idglpi, usertelegram):
+    dt = datetime.datetime.now()
+    data_atual = dt.strftime("%Y-%m-%d %H:%M:%S")
+
+    con = conexao()
+    cursor = con.cursor()
+
+    sql = f'''SELECT username FROM glpi_plugin_telegrambot_user WHERE username = '{usertelegram}' '''
+    cursor.execute(sql)
+
+    usernotify = cursor.fetchall()
+        
+    if usernotify:
+        usuarioExiste1 = True 
     else:
-        return False
+        usuarioExiste1 = False 
+        sql1 = f'''SELECT firstname,realname FROM glpi_users WHERE id = '{idglpi}' '''
+        cursor.execute(sql1)
+        nomeCompleto = cursor.fetchone()
+        nome = nomeCompleto[0]
+        sobrenome = nomeCompleto[1]
+
+    if usuarioExiste1:
+        pass
+    else:
+        sql3 = f'''INSERT INTO glpi_plugin_telegrambot_user(id, is_bot, first_name, last_name, username, language_code, created_at, updated_at) VALUES ('{idtelegram}',0,'{nome}','{sobrenome}','{usertelegram}','pt-br','{data_atual}','{data_atual}') '''
+        cursor.execute(sql3)
+
+
+
+    cursor.close()
+    con.close()
+
 
 
 
@@ -78,15 +146,25 @@ def main():
     
     @bot.message_handler(commands=['chamado'])
     def novochamado(message):
-        newchamado()
+        telegramId = message.from_user.id
+        print(telegramId)
+        usertelegram = message.from_user.username
+        glpiid = getglpiid(usertelegram)
+        validausernotify(telegramId, glpiid, usertelegram)
+        sessao['chat_id'][message.chat.id] = {"titulo": "", "conteudo": ""}
+        comecaChamado(message)
 
 
+        
+
+    # @bot.message_handler(commands=['meuschamados'])dfg
+    # def meuschamados(message):
+    #     listachamados()
 
     @bot.message_handler(func=lambda message: True)
     def greet(message):
         user = message.from_user.username
         uservalido = lambda x : True if (x) else False
-        # bot.reply_to(message, uservalido(getUser(user)))
         if (uservalido(getUser(user))):
             bot.reply_to(message, '''
                 Para abrir chamado digite /chamado.
@@ -99,4 +177,5 @@ def main():
     bot.polling() # looking for message
 
 if __name__ == '__main__':
-    main() 
+    main()
+    
