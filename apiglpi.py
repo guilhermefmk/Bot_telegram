@@ -117,16 +117,16 @@ def validausernotify(idtelegram, idglpi, usertelegram):
     usernotify = cursor.fetchall()
         
     if usernotify:
-        usuarioExiste1 = True 
+        usuarioExiste = True 
     else:
-        usuarioExiste1 = False 
+        usuarioExiste = False 
         sql1 = f'''SELECT firstname,realname FROM glpi_users WHERE id = '{idglpi}' '''
         cursor.execute(sql1)
         nomeCompleto = cursor.fetchone()
         nome = nomeCompleto[0]
         sobrenome = nomeCompleto[1]
 
-    if usuarioExiste1:
+    if usuarioExiste:
         pass
     else:
         sql3 = f'''INSERT INTO glpi_plugin_telegrambot_user(id, is_bot, first_name, last_name, username, language_code, created_at, updated_at) VALUES ('{idtelegram}',0,'{nome}','{sobrenome}','{usertelegram}','pt-br','{data_atual}','{data_atual}') '''
@@ -147,7 +147,6 @@ def main():
     @bot.message_handler(commands=['chamado'])
     def novochamado(message):
         telegramId = message.from_user.id
-        print(telegramId)
         usertelegram = message.from_user.username
         glpiid = getglpiid(usertelegram)
         validausernotify(telegramId, glpiid, usertelegram)
