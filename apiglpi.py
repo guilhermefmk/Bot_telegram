@@ -37,6 +37,9 @@ def conexao():
                              database='verdanatech_glpi_lab')    
     return connection
 
+def conglpi():
+    return glpi_api.connect(URL, APPTOKEN, USERTOKEN)
+
 #RETORNA SE USUÀRIO TELEGRAM ESTA REGISTRADO NO BANCO
 def getUser(usuario):
     usuarioExiste = False 
@@ -44,7 +47,7 @@ def getUser(usuario):
     cursor = con.cursor()
 
     sql = f'''SELECT username FROM glpi_plugin_telegrambot_users WHERE username = '{usuario}' '''
-    print(sql)
+    # print(sql)
     cursor.execute(sql)
 
 
@@ -66,7 +69,7 @@ def getglpiid(usuario):
     cursor = con.cursor()
 
     sql = f'''SELECT id,username FROM glpi_plugin_telegrambot_users WHERE username = '{usuario}' '''
-    print(sql)
+    # print(sql)
     cursor.execute(sql)
     id = cursor.fetchone()
 
@@ -93,15 +96,17 @@ def montaChamado(message):
     titulo = sessao['chat_id'][message.chat.id]['titulo']
     conteudo = sessao['chat_id'][message.chat.id]['conteudo']
     user = message.from_user.username
+    glpiid = getglpiid(user)
     try:
-        with glpi_api.connect(URL, APPTOKEN, USERTOKEN) as glpi:
+        with conglpi() as glpi:
             id = getglpiid(user)
             glpi.add("ticket", 
                     {"name": titulo, 
                     "content": conteudo,   
                     "itilcategories_id": "1", 
                     "_users_id_requester": id})
-    except glpi_api.GLPIError as err:
+            atualiza_requester_id(glpiid)
+    except conglpi().GLPIError as err:
         print(str(err))
 
 def validausernotify(idtelegram, idglpi, usertelegram):
@@ -137,8 +142,35 @@ def validausernotify(idtelegram, idglpi, usertelegram):
     cursor.close()
     con.close()
 
+#ATUALIZA TABELA RETIRANDO O users_id_recipient do USUARIO PADRAO DE API E INSERINDO DO USSUARIO DO TELEGRAM
+def atualiza_requester_id(userid):
+    con = conexao()
+    cursor = con.cursor()
 
+    sql = f'''SELECT tickets_id FROM glpi_tickets_users WHERE users_id = '{userid}' '''
+    cursor.execute(sql)
+    idticket = cursor.fetchall()
+    for x in idticket:
+        sql1 = f'''UPDATE glpi_tickets SET users_id_recipient = '{userid}' WHERE id = '{x[0]}' '''
+        print(sql1)
+        cursor.execute(sql1)
+    con.commit()
+    cursor.close()
+    con.close()
 
+#CAPTURA CHAMADOS DO USUARIO
+def estruturachamdos(usertelegram):
+    id = getglpiid(usertelegram)
+    lista = []
+    try:
+        with conglpi() as glpi:
+            chamados = glpi.get_item("ticket", {"item_id": id})
+            for x in chamados:
+                if x['users_id_recipient'] == id:
+                    lista.append(x['id'])
+    except glpi_api.GLPIError as err:
+        print(str(err))
+    return lista
 
 
 
@@ -153,7 +185,12 @@ def main():
         sessao['chat_id'][message.chat.id] = {"titulo": "", "conteudo": ""}
         comecaChamado(message)
 
-
+    @bot.message_handler(commands=['meuschamados'])
+    def listachamados(message):
+        user = message.from_user.username
+        chamados = estruturachamdos(user)
+        for x in chamados:
+            bot.send_message(message.chat.id, f'Chamado: /{x}')
         
 
     # @bot.message_handler(commands=['meuschamados'])dfg
@@ -167,6 +204,7 @@ def main():
         if (uservalido(getUser(user))):
             bot.reply_to(message, '''
                 Para abrir chamado digite /chamado.
+                Para listar chamados digite /meuschamados
             ''')
         else:
             bot.reply_to(message, '''
