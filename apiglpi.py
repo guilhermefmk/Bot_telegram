@@ -105,7 +105,7 @@ def montaChamado(message):
                     "content": conteudo,   
                     "itilcategories_id": "1", 
                     "_users_id_requester": id})
-            atualiza_requester_id(glpiid)
+            #atualiza_requester_id(glpiid)
     except conglpi().GLPIError as err:
         print(str(err))
 
@@ -143,33 +143,44 @@ def validausernotify(idtelegram, idglpi, usertelegram):
     con.close()
 
 #ATUALIZA TABELA RETIRANDO O users_id_recipient do USUARIO PADRAO DE API E INSERINDO DO USSUARIO DO TELEGRAM
-def atualiza_requester_id(userid):
-    con = conexao()
-    cursor = con.cursor()
+# def atualiza_requester_id(userid):
+#     con = conexao()
+#     cursor = con.cursor()
 
-    sql = f'''SELECT tickets_id FROM glpi_tickets_users WHERE users_id = '{userid}' '''
-    cursor.execute(sql)
-    idticket = cursor.fetchall()
-    for x in idticket:
-        sql1 = f'''UPDATE glpi_tickets SET users_id_recipient = '{userid}' WHERE id = '{x[0]}' '''
-        print(sql1)
-        cursor.execute(sql1)
-    con.commit()
-    cursor.close()
-    con.close()
+#     sql = f'''SELECT tickets_id FROM glpi_tickets_users WHERE users_id = '{userid}' '''
+#     cursor.execute(sql)
+#     idticket = cursor.fetchall()
+#     for x in idticket:
+#         sql1 = f'''UPDATE glpi_tickets SET users_id_recipient = '{userid}' WHERE id = '{x[0]}' '''
+#         print(sql1)
+#         cursor.execute(sql1)
+#     con.commit()
+#     cursor.close()
+#     con.close()
 
 #CAPTURA CHAMADOS DO USUARIO
 def estruturachamdos(usertelegram):
     id = getglpiid(usertelegram)
     lista = []
-    try:
-        with conglpi() as glpi:
-            chamados = glpi.get_item("ticket", {"item_id": id})
-            for x in chamados:
-                if x['users_id_recipient'] == id:
-                    lista.append(x['id'])
-    except glpi_api.GLPIError as err:
-        print(str(err))
+    con = conexao()
+    cursor = con.cursor()
+
+    sql = f'''SELECT tickets_id FROM glpi_tickets_users WHERE users_id = '{id}' '''
+    cursor.execute(sql)
+    idticket = cursor.fetchall()
+    for x in idticket:
+        lista.append(x[0])
+        
+    cursor.close()
+    con.close()
+    # try:
+    #     with conglpi() as glpi:
+    #         chamados = glpi.get_item("ticket", {"item_id": id})
+    #         for x in chamados:
+    #             if x['users_id_recipient'] == id:
+    #                 lista.append(x['id'])
+    # except glpi_api.GLPIError as err:
+    #     print(str(err))
     return lista
 
 
