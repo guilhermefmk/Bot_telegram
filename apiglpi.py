@@ -1,3 +1,4 @@
+import numbers
 from webbrowser import get
 import telebot
 import os 
@@ -142,26 +143,10 @@ def validausernotify(idtelegram, idglpi, usertelegram):
     cursor.close()
     con.close()
 
-#ATUALIZA TABELA RETIRANDO O users_id_recipient do USUARIO PADRAO DE API E INSERINDO DO USSUARIO DO TELEGRAM
-# def atualiza_requester_id(userid):
-#     con = conexao()
-#     cursor = con.cursor()
-
-#     sql = f'''SELECT tickets_id FROM glpi_tickets_users WHERE users_id = '{userid}' '''
-#     cursor.execute(sql)
-#     idticket = cursor.fetchall()
-#     for x in idticket:
-#         sql1 = f'''UPDATE glpi_tickets SET users_id_recipient = '{userid}' WHERE id = '{x[0]}' '''
-#         print(sql1)
-#         cursor.execute(sql1)
-#     con.commit()
-#     cursor.close()
-#     con.close()
-
 #CAPTURA CHAMADOS DO USUARIO
 def estruturachamdos(usertelegram):
     id = getglpiid(usertelegram)
-    lista = []
+    listaids = []
     con = conexao()
     cursor = con.cursor()
 
@@ -169,24 +154,54 @@ def estruturachamdos(usertelegram):
     cursor.execute(sql)
     idticket = cursor.fetchall()
     for x in idticket:
-        lista.append(x[0])
-        
+        listaids.append(x[0])
+
+      
     cursor.close()
     con.close()
-    # try:
-    #     with conglpi() as glpi:
-    #         chamados = glpi.get_item("ticket", {"item_id": id})
-    #         for x in chamados:
-    #             if x['users_id_recipient'] == id:
-    #                 lista.append(x['id'])
-    # except glpi_api.GLPIError as err:
-    #     print(str(err))
-    return lista
+    
+    return listaids
 
+def listaTodosChamados(message):
+    comando = message.text
+    ticketid = comando[1:]
+    listaids = []
+    con = conexao()
+    cursor = con.cursor()
 
+    sql = f'''SELECT tickets_id FROM glpi_tickets_users WHERE 1 '''
+    cursor.execute(sql)
+    idticket = cursor.fetchall()
+
+    cursor.close()
+    con.close()
+
+    for x in idticket:
+        listaids.append(str(x[0]))
+
+    if ticketid in listaids:
+        return True
+    else:
+        return False
+
+    
+
+def listaInteracoes(idticket):
+
+    listafollowups = []
+    try:
+        with conglpi() as glpi:
+            followups = glpi.get_item("ticketfollowup",{"items_id": idticket,"itemstype":"ticket","content":'nova interação'})
+            for x in followups:
+                followup = x['content'].split(';')[2][:-3]
+                listafollowups.append(followup)
+    except glpi_api.GLPIError as err:
+        print(str(err))
+
+    return listafollowups
 
 def main():
-    
+
     @bot.message_handler(commands=['chamado'])
     def novochamado(message):
         telegramId = message.from_user.id
@@ -202,8 +217,22 @@ def main():
         chamados = estruturachamdos(user)
         for x in chamados:
             bot.send_message(message.chat.id, f'Chamado: /{x}')
-        
-
+    
+    @bot.message_handler(func=listaTodosChamados)
+    def mostrainteracoes(message):
+        usertelegram = message.from_user.username
+        glpiid = getglpiid(usertelegram)
+        user = message.from_user.username
+        chamadosDoUsuario = estruturachamdos(user)
+        ticketid = message.text[1:]
+        if ticketid in chamadosDoUsuario:
+            interacoes = listaInteracoes(ticketid)
+            i = 0
+            for x in interacoes:
+                bot.send_message(message.chat.id, f'Interação {i}: \n{x}')
+                i += 1
+        else:
+            bot.send_message(message.chat.id, f'Esse ticket não pertence ao seu usuário')
     # @bot.message_handler(commands=['meuschamados'])dfg
     # def meuschamados(message):
     #     listachamados()
@@ -211,6 +240,7 @@ def main():
     @bot.message_handler(func=lambda message: True)
     def greet(message):
         user = message.from_user.username
+
         uservalido = lambda x : True if (x) else False
         if (uservalido(getUser(user))):
             bot.reply_to(message, '''
