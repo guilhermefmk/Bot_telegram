@@ -110,6 +110,7 @@ def montaChamado(message):
     except conglpi().GLPIError as err:
         print(str(err))
 
+#INSERRT NAS TABELAT DO PLUGIN DE NOTIFICAÇÂO VIA TELEGRAM PARA FUNCIONAR
 def validausernotify(idtelegram, idglpi, usertelegram):
     dt = datetime.datetime.now()
     data_atual = dt.strftime("%Y-%m-%d %H:%M:%S")
@@ -159,46 +160,39 @@ def estruturachamdos(usertelegram):
       
     cursor.close()
     con.close()
-    
     return listaids
-
-def listaTodosChamados(message):
+#RETORNA TRUE SE O TICKET PERTENCER AO USER
+def listaChamadosuser(message):
     comando = message.text
     ticketid = comando[1:]
-    listaids = []
-    con = conexao()
-    cursor = con.cursor()
-
-    sql = f'''SELECT tickets_id FROM glpi_tickets_users WHERE 1 '''
-    cursor.execute(sql)
-    idticket = cursor.fetchall()
-
-    cursor.close()
-    con.close()
-
-    for x in idticket:
-        listaids.append(str(x[0]))
-
-    if ticketid in listaids:
-        return True
+    usertelegram = message.from_user.username
+    listaidsuser = estruturachamdos(usertelegram)
+    if ticketid.isdecimal():
+        if int(ticketid) in listaidsuser:
+            return True
+        else:
+            return False
     else:
         return False
 
     
-
+#RETORNA LISTA DE INTERACOES DO CHAMADO
 def listaInteracoes(idticket):
 
     listafollowups = []
     try:
         with conglpi() as glpi:
-            followups = glpi.get_item("ticketfollowup",{"items_id": idticket,"itemstype":"ticket","content":'nova interação'})
+            followups = glpi.get_item("ticketfollowup",{"items_id": idticket,"itemstype":"ticket"})
+            
             for x in followups:
-                followup = x['content'].split(';')[2][:-3]
-                listafollowups.append(followup)
+                if x['tickets_id'] == int(idticket):
+                    followup = x['content'].split(';')[2][:-3]
+                    listafollowups.append(followup)
     except glpi_api.GLPIError as err:
         print(str(err))
-
     return listafollowups
+
+
 
 def main():
 
@@ -218,24 +212,19 @@ def main():
         for x in chamados:
             bot.send_message(message.chat.id, f'Chamado: /{x}')
     
-    @bot.message_handler(func=listaTodosChamados)
+    @bot.message_handler(func=listaChamadosuser)
     def mostrainteracoes(message):
-        usertelegram = message.from_user.username
-        glpiid = getglpiid(usertelegram)
-        user = message.from_user.username
-        chamadosDoUsuario = estruturachamdos(user)
+   
         ticketid = message.text[1:]
-        if ticketid in chamadosDoUsuario:
-            interacoes = listaInteracoes(ticketid)
-            i = 0
-            for x in interacoes:
-                bot.send_message(message.chat.id, f'Interação {i}: \n{x}')
-                i += 1
-        else:
-            bot.send_message(message.chat.id, f'Esse ticket não pertence ao seu usuário')
-    # @bot.message_handler(commands=['meuschamados'])dfg
-    # def meuschamados(message):
-    #     listachamados()
+        interacoes = listaInteracoes(ticketid)
+        i = 0
+        for x in interacoes:
+            bot.send_message(message.chat.id, f'Interação {i}: \n{x}')
+            i += 1
+
+    # @bot.message_handler(func=solucao)
+    # def solucao(message):
+
 
     @bot.message_handler(func=lambda message: True)
     def greet(message):
