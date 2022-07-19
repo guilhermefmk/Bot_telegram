@@ -193,6 +193,23 @@ def listaInteracoes(idticket):
     return listafollowups
 
 
+def alterastatuschamado(idticket, idstatus):
+    print(idticket, idstatus)
+    try:
+        with conglpi() as glpi:
+            glpi.update('ticket',{"id": idticket,'status': idstatus})
+
+    except glpi_api.GLPIError as err:
+        print(str(err))
+
+def solucao(message):
+    comando = message.text
+    if comando[:8] == '/solucao':
+        return True
+    else:
+        return False
+
+
 
 def main():
 
@@ -214,7 +231,6 @@ def main():
     
     @bot.message_handler(func=listaChamadosuser)
     def mostrainteracoes(message):
-   
         ticketid = message.text[1:]
         interacoes = listaInteracoes(ticketid)
         i = 0
@@ -222,8 +238,12 @@ def main():
             bot.send_message(message.chat.id, f'Interação {i}: \n{x}')
             i += 1
 
-    # @bot.message_handler(func=solucao)
-    # def solucao(message):
+    @bot.message_handler(func=solucao)
+    def solucionachamado(message):
+        comando = message.text
+        ticketid = comando[8:]
+        alterastatuschamado(ticketid, 5)
+
 
 
     @bot.message_handler(func=lambda message: True)
