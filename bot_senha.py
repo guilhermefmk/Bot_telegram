@@ -99,7 +99,8 @@ def getglpiid(usuariotelegram):
     cursor.close()
     con.close()
 
-    return id[0]
+    if id is not None:
+        return id[0]
 #RETORNA O USER NO GLPI BASEADO NO USUÁRIO DO TELEGRAM
 def getglpiuser(idglpi):
     
@@ -109,13 +110,16 @@ def getglpiuser(idglpi):
     sql = f'''SELECT name FROM glpi_users WHERE id = '{idglpi}' '''
     # print(sql)
     cursor.execute(sql)
-    id = cursor.fetchone()
+    user = cursor.fetchone()
 
     
     cursor.close()
     con.close()
 
-    return id[0]
+
+
+    if user is not None:
+        return user[0]
 
 #RETORNA SE USUÀRIO ESTA REGISTRADO NO BANCO BASEADO NA TABELA DO PLUGIN DO GLPI
 def getUser(usuario):
