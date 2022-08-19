@@ -6,13 +6,13 @@ import datetime
 import paramiko
 from paramiko import SSHClient
 
-URL = 'http://172.16.112.164/glpi/apirest.php/'
-APPTOKEN = 'XvRM61PGyo70FTwMEmJxDilK8lXmacjtoyciiuNj'                                           #TOKEN GERADO PARA TODO O SISTEMA
-USERTOKEN = 'CZoqXFVys4u0IKRssKIbDsQRwwMFIxwTY6ZqvE2L'                                          #API TOKEN DO USUÁRIO
-BOTTOKEN = '5341319826:AAHpKduSpGQeO_T2fLpbGmb7hg5lax97Fns'
+URL = 'http://172.16.112.164/glpi/apirest.php/'                                                 #URL DA API DO GLPI
+APPTOKEN = 'TOEKN_DA_API_AQUI'                                                                  #TOKEN GERADO PARA TODO O SISTEMA
+USERTOKEN = 'TOKEN_DO_USUARIO_COM_PERMISSOES_DA_API_AQUI'                                       #API TOKEN DO USUÁRIO
+BOTTOKEN = 'BOT_TELEGRAM_TOKEN_AQUI'                                     #API TOKEN DO BOT TELEGRAM
 bot = telebot.TeleBot(BOTTOKEN)
 sessao = {"chat_id": {}}
-ad_credentials = {"chat_id": {}}
+
 
 
 # try:
@@ -32,26 +32,13 @@ ad_credentials = {"chat_id": {}}
 #CONECTA BANCO
 def conexao():
     connection = pymysql.connect(host='172.16.112.164',
-                             user='root',
-                             password='vetorial',
-                             database='verdanatech_glpi_lab')    
+                             user='USUARIO_BANCO',
+                             password='SENHA_BANCO',
+                             database='NOME_BD')    
     return connection
 
 def conglpi():
     return glpi_api.connect(URL, APPTOKEN, USERTOKEN)
-
-def valida_senha_ad(user,senha):
-    client_valida_senha=SSHClient()
-    client_valida_senha.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    try:
-        client_valida_senha.connect('172.16.112.139', 22, username=f'{user}', password=f'{senha}', timeout=5)
-        client_valida_senha.close()
-        print("True")
-        alterasenhaad()
-    except:
-        client_valida_senha.close()
-        print("False")
-        return False
 
 
 
@@ -238,14 +225,7 @@ def solucao(message):
     else:
         return False
 
-def estruturadadosad(message):
-    usertelegram = message.from_user.username
-    idglpi = getglpiid(usertelegram)
-    ad_credentials['chat_id'][message.chat.id]['senha'] = message.text
-    senha_antiga = ad_credentials['chat_id'][message.chat.id]['senha']
-    ad_credentials['chat_id'][message.chat.id]['user'] = getglpiuser(idglpi)
-    userad = ad_credentials['chat_id'][message.chat.id]['user']
-    return valida_senha_ad(userad[0], senha_antiga)
+
     
 
 def main():
@@ -280,17 +260,7 @@ def main():
         comando = message.text
         ticketid = comando[8:]
         alterastatuschamado(ticketid, 5)
-
-    @bot.message_handler(commands=['senhavpn'])
-    def trocasenhavpn(message):
-        usertelegram = message.from_user.username
-        user_glpi = getglpiuser(usertelegram)
-        ad_credentials['chat_id'][message.chat.id] = {"user": "", "senha": ""}
-        senha_temp = bot.send_message(message.chat.id, 'Digite sua senha atual:')
-        bot.register_next_step_handler(senha_temp, estruturadadosad)
-
-        # if valida_senha_ad(user_glpi, senha_old)
-        # bot.send_message(message.chat.id, )
+        
 
     @bot.message_handler(func=lambda message: True)
     def greet(message):
