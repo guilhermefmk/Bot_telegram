@@ -4,10 +4,10 @@
 Bot para telegram desenvolvido para integração com o GLPI.
 
 
-################## Features ##########################
+<h2>Features </h2>
 
-1 . Abertura de chamados
-2 . Interação de chamados
-3 . Encerramento de chamados
-4 . Autenticação com base no usuário do telegram para comunicação com o bot
+<li> Abertura de chamados</li>
+<li> Interação de chamados</li>
+<li> Encerramento de chamados</li>
+<li> Autenticação com base no usuário do telegram para comunicação com o bot</li>
 
