@@ -8,7 +8,7 @@ from paramiko import SSHClient
 URL = 'http://172.16.112.164/glpi/apirest.php/'                                                 #URL API GLPI
 APPTOKEN = 'XvRM61PGyo70FTwMEmJxDilK8lXmacjtoyciiuNj'                                           #TOKEN GERADO PARA TODO O SISTEMA
 USERTOKEN = 'CZoqXFVys4u0IKRssKIbDsQRwwMFIxwTY6ZqvE2L'                                          #API TOKEN DO USUÁRIO
-BOTTOKEN = '5573257814:AAEBOz58TqmfdmT_AmSguhW1Nr8xmMxjpPE'
+BOTTOKEN = 'BOT_TELEGRAM_TOKEN'
 bot = telebot.TeleBot(BOTTOKEN)
 sessao = {"chat_id": {}}
 
